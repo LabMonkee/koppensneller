@@ -196,74 +196,63 @@
         padding: 5px 10px;
         font-size: 0.9em;
     }
-    .error-message {
-        background-color: #f8d7da;
-        color: #721c24;
-        padding: 10px;
-        margin-bottom: 15px;
-        border: 1px solid #f5c6cb;
-        border-radius: 4px;
-        animation: fadeIn 0.5s, fadeOut 0.5s 4.5s;
-    }
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-    @keyframes fadeOut {
-        from { opacity: 1; }
-        to { opacity: 0; }
-    }
     #journaalPlayer {
         transition: all 0.3s ease;
     }
     .mobile-view #journaalPlayer {
         flex-direction: column;
-        align-items: stretch;
     }
     @media (max-width: 600px) {
         body {
             padding: 10px;
             font-size: 16px;
+            max-width: 100%;
         }
+        
+        h1 {
+            font-size: 2em;
+        }
+        
         #headerContainer {
             flex-direction: column;
             align-items: flex-start;
+            gap: 10px;
         }
-        #toggleViewBtn,
-        #toggleUitlegBtn {
+        
+        #feedUrl, 
+        #savedFeeds,
+        button {
             width: 100%;
-            margin-top: 10px;
+            margin: 5px 0;
         }
-        #feedUrl {
-            width: 100%;
-            margin-bottom: 10px;
+        
+        #journaalPlayer {
+            flex-direction: column;
         }
-        #savedFeeds {
-            width: 100%;
-            margin-bottom: 10px;
-        }
+        
         #journaalPlayer > div:first-child {
             flex-direction: column;
-            align-items: stretch;
+            width: 100%;
         }
+        
         #journaalPlayer button,
         #speedControl {
             width: 100%;
-            margin-bottom: 10px;
+            margin: 5px 0;
         }
-        .mobile-view h1 {
-            font-size: 2em;
-        }
-        .mobile-view #journaalPlayer {
-            padding: 15px;
-        }
-        .mobile-view #speedControl {
-            width: 100%;
-            margin-bottom: 10px;
-        }
-        .mobile-view #currentArticle {
+        
+        #currentArticle {
             font-size: 1em;
             margin-top: 10px;
+            width: 100%;
+        }
+        
+        .artikel {
+            padding: 15px;
+        }
+        
+        .artikel h2 {
+            font-size: 1.2em;
         }
     }
 </style></head><body class="desktop-view">
@@ -444,6 +433,11 @@
 
         async function haalFeedOp() {
             const feedUrl = document.getElementById('feedUrl').value;
+            if (!feedUrl) {
+                artikelenContainer.innerHTML = '<div role="alert">Voer eerst een feed URL in.</div>';
+                return;
+            }
+            
             if (feedUrl) {
                 saveFeedUrl(feedUrl);
             }
@@ -461,6 +455,11 @@
                     feed = rss2jsonResponse.data;
                 }
                 
+                if (!feed || !feed.items || feed.items.length === 0) {
+                    artikelenContainer.innerHTML = '<div role="alert">Geen koppen gevonden in deze feed. Controleer of de URL correct is.</div>';
+                    return;
+                }
+                
                 const fragment = document.createDocumentFragment();
                 artikelenData = feed.items;
                 artikelenData.forEach((item, index) => {
@@ -469,6 +468,7 @@
                     artikel.setAttribute('tabindex', '0');
                     artikel.setAttribute('role', 'button');
                     artikel.setAttribute('aria-pressed', 'false');
+                    artikel.setAttribute('aria-labelledby', `artikel-${index}`);
                     artikel.innerHTML = `<h2 id="artikel-${index}">${item.title}</h2>`;
                     artikel.addEventListener('click', () => toggleSelectie(index));
                     artikel.addEventListener('keydown', (event) => {
@@ -482,16 +482,8 @@
                 artikelenContainer.innerHTML = '';
                 artikelenContainer.appendChild(fragment);
             } catch (error) {
-                showError(`Fout bij ophalen feed: ${error.message}. Controleer de URL en probeer opnieuw.`);
+                artikelenContainer.innerHTML = '<div role="alert">Fout bij ophalen feed: Controleer de URL en probeer opnieuw.</div>';
             }
-        }
-
-        function showError(message) {
-            const errorElement = document.createElement('div');
-            errorElement.className = 'error-message';
-            errorElement.textContent = message;
-            document.body.insertBefore(errorElement, document.body.firstChild);
-            setTimeout(() => errorElement.remove(), 5000);
         }
 
         function loadSavedFeed() {
@@ -500,6 +492,9 @@
             feedUrl.value = savedFeedsSelect.value;
             if (feedUrl.value) {
                 haalFeedOp();
+            } else {
+                const artikelenContainer = document.getElementById('artikelen');
+                artikelenContainer.innerHTML = '<div role="alert">Selecteer eerst een feed om te laden.</div>';
             }
         }
 
@@ -543,6 +538,9 @@
             const isGeselecteerd = artikel.classList.contains('geselecteerd');
             const titel = artikel.querySelector('h2').textContent;
             const inhoud = artikelenData[index].content;
+            
+            // Update ARIA pressed state
+            artikel.setAttribute('aria-pressed', isGeselecteerd ? 'true' : 'false');
             
             if (isGeselecteerd) {
                 geselecteerdeArtikelen.push({titel, inhoud});
